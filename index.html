@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CD Itagüí — Ideamos Juntos</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💡</text></svg>"/>
+
+  <!-- ── TAILWIND CSS CDN ─────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          animation: {
+            'spin-slow': 'spin 2s linear infinite',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- ── REACT 18 + REACTDOM UMD ────────────────────────────── -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- ── BABEL STANDALONE (JSX en navegador) ────────────────── -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ── ESTILOS GLOBALES ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      background: #020617 url('./cerveceria_union.jpeg') center / cover no-repeat fixed;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #22d3ee44; }
+    select option { background: #1e293b; color: #fff; }
+
+    /* ── ANIMACIONES ──────────────────────────────────────── */
+    @keyframes slideInRight  { from { transform: translateX(110%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+    @keyframes fadeIn        { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulseGlow     { 0%,100% { box-shadow:0 0 10px rgba(34,211,238,.3); } 50% { box-shadow:0 0 28px rgba(34,211,238,.65); } }
+    @keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes shake         { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-10px)} 40%{transform:translateX(10px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} }
+    .animate-slide-in   { animation: slideInRight .45s cubic-bezier(.22,1,.36,1) both; }
+    .animate-fade-in    { animation: fadeIn .4s ease both; }
+    .animate-pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+    .spin               { animation: spin 1s linear infinite; }
+
+    /* ── FOCUS RING ───────────────────────────────────────── */
+    :focus-visible { outline: 2px solid rgba(34,211,238,.7); outline-offset: 2px; }
+
+    /* ══════════════════════════════════════════════════════
+       ESTILOS DE IMPRESIÓN — Solo imprime el modal A4
+    ══════════════════════════════════════════════════════ */
+    @media print {
+      body > *                       { display: none !important; }
+      #audit-print-root              { display: flex !important; position: fixed; inset: 0; background: #fff; z-index: 99999; align-items: flex-start; justify-content: center; padding: 0; }
+      #audit-print-root *            { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .no-print                      { display: none !important; }
+      .audit-a4-sheet                { box-shadow: none !important; border: 2px solid #000 !important; width: 210mm !important; max-width: 100% !important; margin: 0 auto !important; }
+      @page                          { margin: 8mm; size: A4 portrait; }
+    }
+
+    /* ── FICHA AUDITORÍA ──────────────────────────────────── */
+    .audit-field       { margin-bottom: 10px; }
+    .audit-label       { font-size: 9px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#475569; margin-bottom:3px; }
+    .audit-value       { font-size:13px; color:#0f172a; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:6px 10px; min-height:28px; word-break:break-word; line-height:1.5; }
+    .audit-grid        { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .audit-col-span-2  { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    /* ════════════════════════════════════════════════════════════
+       CD ITAGÜÍ — IDEAMOS JUNTOS  |  Aplicación Completa
+       React 18 + Tailwind CSS + Babel (standalone browser build)
+    ════════════════════════════════════════════════════════════ */
+
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    /* ── URL del Web App de Google Apps Script ───────────────── */
+    /* Reemplaza con tu URL real después de desplegar backend.gs  */
+    const GAS_URL  = 'https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxRd8qcE-_tCSIM_ZmGx8MM8-E-H6NBi5f2K-sx0NeLTe4Wg8enfEZsZVtB28fGjudA/exec';
+    const IS_DEMO  = GAS_URL.includes('TU_DEPLOYMENT');   // modo demo automático
+
+    /* ── CREDENCIALES PANEL ADMINISTRATIVO ───────────────────────
+       Modifica usuario y contraseña antes de publicar.            */
+    const ADMIN_USERS = [
+      { user: 'admin.cd',  password: 'CDItagui2026',  nombre: 'Administrador CD'  },
+      { user: 'gerente',   password: 'DPO2026Elite',  nombre: 'Gerente DPO'       },
+    ];
+
+    /* ════════════════════════════════════════════════════════════
+       SISTEMA DE ÍCONOS (SVG inline — equivalentes a Lucide React)
+    ════════════════════════════════════════════════════════════ */
+    const SvgIcon = ({ d, size=24, className='', sw=2, fill='none', children }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill}
+           stroke="currentColor" strokeWidth={sw}
+           strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {d ? <path d={d}/> : children}
+      </svg>
+    );
+
+    const Lightbulb      = ({size=24,className=''}) => <SvgIcon size={size} className={className}><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14z"/></SvgIcon>;
+    const LayoutDash     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></SvgIcon>;
+    const Zap            = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></SvgIcon>;
+    const RefreshCw      = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></SvgIcon>;
+    const ChevRight      = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="m9 18 6-6-6-6"/></SvgIcon>;
+    const ChevDown       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="m6 9 6 6 6-6"/></SvgIcon>;
+    const ChevUp         = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="m18 15-6-6-6 6"/></SvgIcon>;
+    const StarIcon       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon>;
+    const ShieldIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon>;
+    const UserIcon       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></SvgIcon>;
+    const Building       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></SvgIcon>;
+    const TargetIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon>;
+    const FileTextIcon   = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></SvgIcon>;
+    const AlignLeftIcon  = ({size=24,className=''}) => <SvgIcon size={size} className={className}><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></SvgIcon>;
+    const TrendingUpIcon = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></SvgIcon>;
+    const SendIcon       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></SvgIcon>;
+    const Loader2Icon    = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></SvgIcon>;
+    const SparklesIcon   = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></SvgIcon>;
+    const CheckCircle    = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></SvgIcon>;
+    const CheckCircle2   = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></SvgIcon>;
+    const AlertCircle    = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></SvgIcon>;
+    const AlertTriangle  = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></SvgIcon>;
+    const SearchIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></SvgIcon>;
+    const EyeIcon        = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></SvgIcon>;
+    const EyeOffIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></SvgIcon>;
+    const LockIcon       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></SvgIcon>;
+    const LockOpenIcon   = ({size=24,className=''}) => <SvgIcon size={size} className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></SvgIcon>;
+    const LogOutIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon>;
+    const XIcon          = ({size=24,className=''}) => <SvgIcon size={size} className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></SvgIcon>;
+    const PrinterIcon    = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></SvgIcon>;
+    const InboxIcon      = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></SvgIcon>;
+    const ClockIcon      = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></SvgIcon>;
+    const XCircle        = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></SvgIcon>;
+    const ThumbsUp       = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></SvgIcon>;
+    const CalendarIcon   = ({size=24,className=''}) => <SvgIcon size={size} className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></SvgIcon>;
+    const FilterIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></SvgIcon>;
+
+    /* Producción — sin datos de demo; los datos reales vienen de Google Sheets vía GAS_URL */
+    const MOCK_IDEAS = [];
+
+    /* ════════════════════════════════════════════════════════════
+       UTILIDADES — FUNCIÓN SABUESO INFALIBLE
+    ════════════════════════════════════════════════════════════ */
+    const normalize = (str) =>
+      String(str ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+    const scanKey = (obj, targetKey) => {
+      if (!obj || typeof obj !== 'object') return '';
+      const normTarget = normalize(targetKey).replace(/[\s_-]/g, '');
+      const found = Object.keys(obj).find(k => normalize(k).replace(/[\s_-]/g, '') === normTarget);
+      return found !== undefined ? String(obj[found] ?? '') : '';
+    };
+
+    const getId          = (o) => scanKey(o, 'ID_Idea');
+    const getFecha       = (o) => scanKey(o, 'Fecha');
+    const getCreador     = (o) => scanKey(o, 'Creador');
+    const getArea        = (o) => scanKey(o, 'Area');
+    const getPilar       = (o) => scanKey(o, 'Pilar_Impactado');
+    const getTitulo      = (o) => scanKey(o, 'Titulo_Idea');
+    const getDescripcion = (o) => scanKey(o, 'Descripcion');
+    const getImpacto     = (o) => scanKey(o, 'Impacto_Esperado');
+    const getOperador    = (o) => scanKey(o, 'Operador');
+    const getCargo       = (o) => scanKey(o, 'Cargo');
+    const getPresupuesto = (o) => scanKey(o, 'Necesita_Presupuesto');
+    const getTelefono    = (o) => scanKey(o, 'Telefono');
+    const getStatus      = (o) => scanKey(o, 'Status');
+    const getFeedback    = (o) => scanKey(o, 'Feedback_Comite');
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: StatusBadge
+    ════════════════════════════════════════════════════════════ */
+    const STATUS_MAP = {
+      'EN REVISION' : { label:'En Revisión',  Icon: ClockIcon,    cls:'bg-yellow-900/50 text-yellow-300 border-yellow-600/40',   glow:'rgba(234,179,8,.35)',    dot:'bg-yellow-400'  },
+      'APROBADA'    : { label:'Aprobada',     Icon: ThumbsUp,     cls:'bg-blue-900/50 text-blue-300 border-blue-600/40',         glow:'rgba(59,130,246,.35)',   dot:'bg-blue-400'    },
+      'IMPLEMENTADA': { label:'Implementada', Icon: CheckCircle2, cls:'bg-emerald-900/50 text-emerald-300 border-emerald-600/40', glow:'rgba(16,185,129,.35)',   dot:'bg-emerald-400' },
+      'RECHAZADA'   : { label:'Rechazada',    Icon: XCircle,      cls:'bg-slate-800/80 text-slate-400 border-slate-600/40',      glow:'rgba(100,116,139,.2)',   dot:'bg-slate-500'   },
+    };
+    const normStatus = (s) => {
+      const n = normalize(s || '');
+      if (n.includes('revision'))    return 'EN REVISION';
+      if (n === 'aprobada')          return 'APROBADA';
+      if (n === 'implementada')      return 'IMPLEMENTADA';
+      if (n === 'rechazada')         return 'RECHAZADA';
+      return 'EN REVISION';
+    };
+
+    function StatusBadge({ status }) {
+      const key  = normStatus(status);
+      const cfg  = STATUS_MAP[key];
+      const Icon = cfg.Icon;
+      return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold whitespace-nowrap ${cfg.cls}`}
+              style={{ boxShadow:`0 0 8px ${cfg.glow}` }}>
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`}/>
+          <Icon size={11} className="flex-shrink-0"/>
+          {cfg.label}
+        </span>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: Modal de Auditoría PDF
+    ════════════════════════════════════════════════════════════ */
+    function AuditModal({ idea, onClose }) {
+      useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        const esc = (e) => e.key === 'Escape' && onClose();
+        document.addEventListener('keydown', esc);
+        return () => { document.body.style.overflow = ''; document.removeEventListener('keydown', esc); };
+      }, [onClose]);
+
+      const id     = getId(idea);
+      const status = getStatus(idea);
+      const key    = normStatus(status);
+      const stColors = {
+        'EN REVISION' : { bg:'#713f12', fg:'#fef08a' },
+        'APROBADA'    : { bg:'#1e3a5f', fg:'#93c5fd' },
+        'IMPLEMENTADA': { bg:'#14532d', fg:'#86efac' },
+        'RECHAZADA'   : { bg:'#1e293b', fg:'#94a3b8' },
+      };
+      const sc = stColors[key] || stColors['EN REVISION'];
+
+      return (
+        <div id="audit-print-root"
+             className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ background:'rgba(2,6,23,0.93)', backdropFilter:'blur(10px)' }}
+             onClick={(e) => e.target === e.currentTarget && onClose()}>
+
+          {/* Hoja A4 */}
+          <div className="audit-a4-sheet bg-white text-slate-900 w-full max-w-2xl rounded-lg overflow-hidden"
+               style={{ maxHeight:'93vh', overflowY:'auto', border:'2px solid #000',
+                        boxShadow:'0 0 60px rgba(34,211,238,.2), 0 25px 50px rgba(0,0,0,.7)' }}>
+
+            {/* Encabezado institucional */}
+            <div style={{ background:'#0f172a', padding:'18px 26px', borderBottom:'3px solid #22d3ee' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ color:'#22d3ee', fontSize:'9px', fontWeight:900, letterSpacing:'3px', textTransform:'uppercase' }}>Sistema de Gestión de Ideas · DPO</div>
+                  <div style={{ color:'#fff', fontSize:'17px', fontWeight:900, marginTop:'2px', letterSpacing:'1px' }}>CD ITAGÜÍ — IDEAMOS JUNTOS</div>
+                  <div style={{ color:'#64748b', fontSize:'9px', letterSpacing:'2px', marginTop:'2px', textTransform:'uppercase' }}>Ficha de Auditoría · Mejora Continua</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ color:'#475569', fontSize:'8px', textTransform:'uppercase', letterSpacing:'1px' }}>Formato</div>
+                  <div style={{ color:'#22d3ee', fontSize:'13px', fontWeight:900, fontFamily:'monospace' }}>F-INN-001</div>
+                  <div style={{ color:'#475569', fontSize:'8px', marginTop:'3px' }}>
+                    Impreso: {new Date().toLocaleDateString('es-CO')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cuerpo */}
+            <div style={{ padding:'22px 26px' }}>
+              {/* ID + Status banner */}
+              <div style={{ background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:'6px', padding:'12px 16px', marginBottom:'18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ fontSize:'9px', color:'#64748b', fontWeight:700, textTransform:'uppercase', letterSpacing:'1px' }}>ID de la Idea</div>
+                  <div style={{ fontSize:'19px', fontWeight:900, fontFamily:'monospace', color:'#0369a1', letterSpacing:'2px' }}>{id}</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:'9px', color:'#64748b', fontWeight:700, textTransform:'uppercase', letterSpacing:'1px', marginBottom:'4px' }}>Estado</div>
+                  <div style={{ display:'inline-block', padding:'4px 14px', borderRadius:'999px', fontSize:'10px', fontWeight:900, letterSpacing:'1px', textTransform:'uppercase', background:sc.bg, color:sc.fg }}>
+                    {status || 'EN REVISIÓN'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Grilla de campos */}
+              <div className="audit-grid">
+                <div className="audit-field"><div className="audit-label">📅 Fecha de Registro</div><div className="audit-value">{getFecha(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">👤 Colaborador Creador</div><div className="audit-value">{getCreador(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">🏢 Área</div><div className="audit-value">{getArea(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">🎯 Pilar DPO Impactado</div><div className="audit-value">{getPilar(idea) || '—'}</div></div>
+                <div className="audit-field audit-col-span-2"><div className="audit-label">💡 Título de la Idea</div><div className="audit-value" style={{ fontWeight:700 }}>{getTitulo(idea) || '—'}</div></div>
+                <div className="audit-field audit-col-span-2"><div className="audit-label">📝 Descripción Detallada</div><div className="audit-value" style={{ whiteSpace:'pre-line' }}>{getDescripcion(idea) || '—'}</div></div>
+                <div className="audit-field audit-col-span-2"><div className="audit-label">📈 Impacto Esperado</div><div className="audit-value">{getImpacto(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">🏷️ Operador</div><div className="audit-value">{getOperador(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">💼 Cargo</div><div className="audit-value">{getCargo(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">📞 Teléfono de Contacto</div><div className="audit-value">{getTelefono(idea) || '—'}</div></div>
+                <div className="audit-field"><div className="audit-label">💰 ¿Necesita Presupuesto?</div><div className="audit-value" style={{ fontWeight: getPresupuesto(idea) && getPresupuesto(idea)!=='No requiere presupuesto' ? 700 : 'normal', color: getPresupuesto(idea) && getPresupuesto(idea)!=='No requiere presupuesto' ? '#b45309' : 'inherit' }}>{getPresupuesto(idea) || '—'}</div></div>
+                {getFeedback(idea) && (
+                  <div className="audit-field audit-col-span-2">
+                    <div className="audit-label">💬 Retroalimentación del Comité DPO</div>
+                    <div className="audit-value" style={{ borderColor:'#86efac', background:'#f0fdf4', whiteSpace:'pre-line' }}>{getFeedback(idea)}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Firmas */}
+              <div style={{ marginTop:'20px', borderTop:'1px solid #e2e8f0', paddingTop:'14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
+                {['Colaborador Creador', 'Comité DPO — Revisión'].map(lbl => (
+                  <div key={lbl}>
+                    <div style={{ height:'38px', borderBottom:'1px solid #94a3b8', marginBottom:'5px' }}/>
+                    <div style={{ fontSize:'8px', color:'#64748b', fontWeight:700, textTransform:'uppercase', letterSpacing:'1px' }}>Firma: {lbl}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pie */}
+              <div style={{ marginTop:'14px', textAlign:'center', color:'#94a3b8', fontSize:'8px', letterSpacing:'1px', textTransform:'uppercase' }}>
+                CD Itagüí · Sistema de Innovación DPO · Documento interno · Generado por plataforma Ideamos Juntos
+              </div>
+            </div>
+
+            {/* Botones (solo en pantalla) */}
+            <div className="no-print sticky bottom-0 flex items-center justify-between gap-3 px-6 py-3"
+                 style={{ background:'#f8fafc', borderTop:'1px solid #e2e8f0' }}>
+              <button onClick={onClose}
+                      className="no-print flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-all">
+                <XIcon size={14}/> Cerrar
+              </button>
+              <button onClick={() => window.print()}
+                      className="no-print flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:opacity-90"
+                      style={{ background:'linear-gradient(135deg,#0891b2,#0e7490)', boxShadow:'0 4px 14px rgba(8,145,178,.4)' }}>
+                <PrinterIcon size={15}/> Imprimir Ficha PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: IdeaForm
+    ════════════════════════════════════════════════════════════ */
+    const AREAS_OPTS      = ['','Operativo','Administrativo','Staff'];
+    const PILARES_OPTS    = ['','Productividad','Seguridad','Gente','Calidad','Mantenimiento'];
+    const IMPACTO_OPTS    = ['','Alto — Impacto en toda la operación','Medio — Mejora de proceso específico','Bajo — Optimización puntual','Ahorro económico directo','Mejora en seguridad y bienestar','Reducción de reprocesos'];
+    const OPERADOR_OPTS   = ['','LIS','KA'];
+    const CARGO_OPTS      = ['','Auxiliar Distribución','Responsable de Reparto','Conductor Distribución','Administrativo'];
+    const PRESUPUESTO_OPTS= ['','No requiere presupuesto','Menos de $500.000','$500.000 - $2.000.000','$2.000.000 - $5.000.000','Más de $5.000.000'];
+    const AREAS_EMOJIS    = { Operativo:'🏭', Administrativo:'🏢', Staff:'⭐' };
+    const PILARES_EMOJIS  = { Productividad:'⚡', Seguridad:'🛡️', Gente:'👥', Calidad:'🎯', Mantenimiento:'🔧' };
+    const IMPACTO_EMOJIS  = { 'Alto — Impacto en toda la operación':'🚀', 'Medio — Mejora de proceso específico':'📈', 'Bajo — Optimización puntual':'🔧', 'Ahorro económico directo':'💰', 'Mejora en seguridad y bienestar':'🛡️', 'Reducción de reprocesos':'♻️' };
+    const OPERADOR_EMOJIS = { LIS:'🔵', KA:'🟠' };
+    const CARGO_EMOJIS    = { 'Auxiliar Distribución':'📦', 'Responsable de Reparto':'🗂️', 'Conductor Distribución':'🚛', 'Administrativo':'💼' };
+    const PRESUPUESTO_EMOJIS = { 'No requiere presupuesto':'✅', 'Menos de $500.000':'💵', '$500.000 - $2.000.000':'💵💵', '$2.000.000 - $5.000.000':'💵💵💵', 'Más de $5.000.000':'🏦' };
+    const INIT_FORM = { creador:'', operador:'', cargo:'', telefono:'', area:'', pilar:'', titulo:'', descripcion:'', impacto:'', presupuesto:'' };
+
+    function NeonInput({ value, onChange, placeholder, maxLen }) {
+      const [focus, setFocus] = useState(false);
+      return (
+        <div className="relative rounded-xl transition-all duration-300" style={{ boxShadow: focus ? '0 0 0 1.5px rgba(34,211,238,.8), 0 0 18px rgba(34,211,238,.18)' : '0 0 0 1px rgba(51,65,85,.9)' }}>
+          <input value={value} onChange={onChange} onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+                 placeholder={placeholder} maxLength={maxLen}
+                 className="w-full bg-slate-900/80 text-white placeholder-slate-500 px-4 py-3 text-sm rounded-xl border-0 outline-none transition-all duration-200"
+                 style={{ background: focus ? 'rgba(30,41,59,.95)' : 'rgba(15,23,42,.8)' }}/>
+          {maxLen && <span className="absolute right-3 bottom-3 text-xs text-slate-600 pointer-events-none">{value.length}/{maxLen}</span>}
+        </div>
+      );
+    }
+
+    function NeonSelect({ value, onChange, opts, emojis, placeholder }) {
+      const [focus, setFocus] = useState(false);
+      return (
+        <div className="relative rounded-xl transition-all duration-300" style={{ boxShadow: focus ? '0 0 0 1.5px rgba(34,211,238,.8), 0 0 18px rgba(34,211,238,.18)' : '0 0 0 1px rgba(51,65,85,.9)' }}>
+          <select value={value} onChange={onChange} onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+                  className="w-full text-sm px-4 py-3 pr-10 rounded-xl border-0 outline-none appearance-none cursor-pointer transition-all duration-200"
+                  style={{ background: focus ? 'rgba(30,41,59,.95)' : 'rgba(15,23,42,.8)', color: value ? '#fff' : '#64748b', colorScheme:'dark' }}>
+            <option value="" disabled style={{ background:'#1e293b' }}>{placeholder}</option>
+            {opts.filter(o=>o).map(o => <option key={o} value={o} style={{ background:'#1e293b' }}>{emojis && emojis[o] ? `${emojis[o]}  ${o}` : o}</option>)}
+          </select>
+          <ChevDown size={15} className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${focus ? 'text-cyan-400' : 'text-slate-500'}`}/>
+        </div>
+      );
+    }
+
+    function NeonTextarea({ value, onChange, placeholder, rows=4, maxLen }) {
+      const [focus, setFocus] = useState(false);
+      return (
+        <div className="relative rounded-xl transition-all duration-300" style={{ boxShadow: focus ? '0 0 0 1.5px rgba(34,211,238,.8), 0 0 18px rgba(34,211,238,.18)' : '0 0 0 1px rgba(51,65,85,.9)' }}>
+          <textarea value={value} onChange={onChange} onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+                    placeholder={placeholder} rows={rows} maxLength={maxLen}
+                    className="w-full text-white placeholder-slate-500 px-4 py-3 text-sm rounded-xl border-0 outline-none resize-none transition-all duration-200 leading-relaxed"
+                    style={{ background: focus ? 'rgba(30,41,59,.95)' : 'rgba(15,23,42,.8)' }}/>
+          {maxLen && <span className="absolute right-3 bottom-2 text-xs text-slate-600 pointer-events-none">{value.length}/{maxLen}</span>}
+        </div>
+      );
+    }
+
+    function FormCard({ title, subtitle, accent='cyan', children }) {
+      const border = { cyan:'border-cyan-500/30', violet:'border-violet-500/30', emerald:'border-emerald-500/30' }[accent];
+      const bar    = { cyan:'bg-cyan-400', violet:'bg-violet-400', emerald:'bg-emerald-400' }[accent];
+      const txt    = { cyan:'text-cyan-400', violet:'text-violet-400', emerald:'text-emerald-400' }[accent];
+      const glow   = { cyan:'rgba(34,211,238,0.08)', violet:'rgba(129,140,248,0.08)', emerald:'rgba(16,185,129,0.08)' }[accent];
+      return (
+        <div className={`relative backdrop-blur-2xl rounded-2xl border ${border} p-6 transition-all duration-300`}
+             style={{ background:`rgba(7,15,35,0.72)`, boxShadow:`0 8px 32px rgba(0,0,0,0.5), inset 0 0 0 1px ${glow}` }}>
+          <div className={`absolute top-0 left-6 w-12 h-0.5 ${bar} rounded-b-full opacity-60`}/>
+          <div className="mb-4">
+            <h3 className={`text-xs font-black uppercase tracking-widest ${txt} mb-0.5`}>{title}</h3>
+            {subtitle && <p className="text-slate-500 text-xs">{subtitle}</p>}
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function FieldLabel({ Icon, text }) {
+      return (
+        <label className="flex items-center gap-2 text-slate-300 text-xs font-bold uppercase tracking-widest mb-2">
+          <Icon size={12} className="text-cyan-500"/>
+          {text}<span className="text-cyan-400 text-base leading-none">*</span>
+        </label>
+      );
+    }
+
+    function ErrMsg({ msg }) {
+      return msg ? <p className="mt-1.5 text-red-400 text-xs flex items-center gap-1"><AlertCircle size={11}/>{msg}</p> : null;
+    }
+
+    function IdeaForm({ onSubmit, loading }) {
+      const [form,    setForm]    = useState(INIT_FORM);
+      const [errors,  setErrors]  = useState({});
+      const [success, setSuccess] = useState(false);
+      const [lastId,  setLastId]  = useState('');
+
+      const set = (field) => (e) => {
+        setForm(p => ({...p, [field]: e.target.value}));
+        if (errors[field]) setErrors(p => ({...p, [field]:''}));
+      };
+
+      // Progreso visual
+      const filled  = Object.values(form).filter(v => v.trim()).length;
+      const total   = Object.keys(form).length;
+      const pct     = Math.round(filled/total*100);
+
+      const validate = () => {
+        const e = {};
+        if (!form.creador.trim())     e.creador     = 'El nombre es obligatorio.';
+        if (!form.operador)           e.operador    = 'Selecciona el operador.';
+        if (!form.cargo)              e.cargo       = 'Selecciona el cargo.';
+        if (!form.telefono.trim())    e.telefono    = 'El teléfono es obligatorio.';
+        if (!form.area)               e.area        = 'Selecciona un área.';
+        if (!form.pilar)              e.pilar       = 'Selecciona el pilar DPO.';
+        if (!form.titulo.trim())      e.titulo      = 'El título es obligatorio.';
+        if (!form.descripcion.trim()) e.descripcion = 'La descripción no puede estar vacía.';
+        if (!form.impacto)            e.impacto     = 'Selecciona el impacto esperado.';
+        if (!form.presupuesto)        e.presupuesto = 'Indica si requiere presupuesto.';
+        return e;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        const errs = validate();
+        if (Object.keys(errs).length) { setErrors(errs); return; }
+        const result = await onSubmit(form);
+        if (result && result.id)  setLastId(result.id);
+        if (result && result.ok)  { setSuccess(true); setForm(INIT_FORM); setTimeout(()=>setSuccess(false), 8000); }
+      };
+
+      if (success) return (
+        <div className="max-w-2xl mx-auto py-10 animate-fade-in">
+          <div className="bg-emerald-900/30 border border-emerald-500/40 rounded-2xl p-10 text-center backdrop-blur-xl"
+               style={{ boxShadow:'0 0 40px rgba(16,185,129,.15)' }}>
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center" style={{ boxShadow:'0 0 30px rgba(16,185,129,.4)' }}>
+              <CheckCircle size={40} className="text-emerald-400"/>
+            </div>
+            <h3 className="text-2xl font-black text-white mb-1">¡Idea Lanzada!</h3>
+            {lastId && <p className="text-emerald-400 font-mono font-bold text-lg mb-1">{lastId}</p>}
+            <p className="text-slate-400 text-sm mb-7 max-w-md mx-auto">Tu idea fue registrada exitosamente. El comité DPO la evaluará y recibirás retroalimentación pronto.</p>
+            <button onClick={()=>setSuccess(false)} className="px-6 py-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl font-bold text-sm hover:bg-emerald-500/30 transition-all">
+              <SparklesIcon size={14} className="inline mr-2"/>Lanzar otra idea
+            </button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="max-w-4xl mx-auto animate-fade-in">
+          {/* Barra de progreso */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500"
+                   style={{ width:`${pct}%`, background: pct===100 ? 'linear-gradient(90deg,#10b981,#22d3ee)' : 'linear-gradient(90deg,#22d3ee,#0891b2)' }}/>
+            </div>
+            <span className="text-xs font-bold text-slate-400 whitespace-nowrap">{filled}/{total} campos</span>
+            {pct===100 && <CheckCircle2 size={14} className="text-emerald-400"/>}
+          </div>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+              {/* Tarjeta 1: Identidad */}
+              <FormCard title="Identidad" subtitle="¿Quién propone esta idea?" accent="cyan">
+                <div className="mb-4">
+                  <FieldLabel Icon={UserIcon} text="Tu nombre completo"/>
+                  <NeonInput value={form.creador} onChange={set('creador')} placeholder="Ej. María González Restrepo" maxLen={80}/>
+                  <ErrMsg msg={errors.creador}/>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <FieldLabel Icon={ShieldIcon} text="Operador"/>
+                    <NeonSelect value={form.operador} onChange={set('operador')} opts={OPERADOR_OPTS} emojis={OPERADOR_EMOJIS} placeholder="LIS / KA…"/>
+                    <ErrMsg msg={errors.operador}/>
+                  </div>
+                  <div>
+                    <FieldLabel Icon={Building} text="Área"/>
+                    <NeonSelect value={form.area} onChange={set('area')} opts={AREAS_OPTS} emojis={AREAS_EMOJIS} placeholder="Área…"/>
+                    <ErrMsg msg={errors.area}/>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <FieldLabel Icon={FileTextIcon} text="Cargo"/>
+                  <NeonSelect value={form.cargo} onChange={set('cargo')} opts={CARGO_OPTS} emojis={CARGO_EMOJIS} placeholder="Selecciona tu cargo…"/>
+                  <ErrMsg msg={errors.cargo}/>
+                </div>
+                <div>
+                  <FieldLabel Icon={SparklesIcon} text="Teléfono de contacto"/>
+                  <NeonInput value={form.telefono} onChange={set('telefono')} placeholder="Ej. 3001234567" maxLen={15}/>
+                  <ErrMsg msg={errors.telefono}/>
+                </div>
+              </FormCard>
+
+              {/* Tarjeta 2: Alineación DPO */}
+              <FormCard title="Alineación DPO" subtitle="¿A qué pilar impacta?" accent="violet">
+                <div className="mb-4">
+                  <FieldLabel Icon={TargetIcon} text="Pilar DPO impactado"/>
+                  <NeonSelect value={form.pilar} onChange={set('pilar')} opts={PILARES_OPTS} emojis={PILARES_EMOJIS} placeholder="Selecciona el pilar…"/>
+                  <ErrMsg msg={errors.pilar}/>
+                </div>
+                <div className="mb-4">
+                  <FieldLabel Icon={TrendingUpIcon} text="Impacto esperado"/>
+                  <NeonSelect value={form.impacto} onChange={set('impacto')} opts={IMPACTO_OPTS} emojis={IMPACTO_EMOJIS} placeholder="Selecciona el impacto…"/>
+                  <ErrMsg msg={errors.impacto}/>
+                </div>
+                <div>
+                  <FieldLabel Icon={Zap} text="¿Necesita presupuesto?"/>
+                  <NeonSelect value={form.presupuesto} onChange={set('presupuesto')} opts={PRESUPUESTO_OPTS} emojis={PRESUPUESTO_EMOJIS} placeholder="Selecciona una opción…"/>
+                  <ErrMsg msg={errors.presupuesto}/>
+                </div>
+              </FormCard>
+
+              {/* Tarjeta 3: La Idea (2 columnas) */}
+              <div className="lg:col-span-2">
+                <FormCard title="La Idea" subtitle="Describe tu propuesta con claridad y detalle" accent="emerald">
+                  <div className="mb-4">
+                    <FieldLabel Icon={FileTextIcon} text="Título de la idea"/>
+                    <NeonInput value={form.titulo} onChange={set('titulo')} placeholder="Ej. Sistema de código de colores para ubicación de pallets" maxLen={120}/>
+                    <ErrMsg msg={errors.titulo}/>
+                  </div>
+                  <div>
+                    <FieldLabel Icon={AlignLeftIcon} text="Descripción detallada"/>
+                    <NeonTextarea value={form.descripcion} onChange={set('descripcion')}
+                      placeholder="Explica en qué consiste tu idea, cómo funcionaría, qué recursos necesitaría y por qué crees que mejoraría la operación del CD…"
+                      rows={5} maxLen={1000}/>
+                    <ErrMsg msg={errors.descripcion}/>
+                  </div>
+                </FormCard>
+              </div>
+            </div>
+
+            {/* Botón enviar */}
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-4">
+              <p className="text-slate-600 text-xs">* Todos los campos son obligatorios · Revisión por Comité DPO</p>
+              <button type="submit" disabled={loading}
+                      className="relative flex items-center justify-center gap-3 px-10 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 min-w-[220px] focus:outline-none"
+                      style={!loading ? { background:'linear-gradient(135deg,#22d3ee,#10b981)', boxShadow:'0 0 30px rgba(34,211,238,.4), 0 4px 20px rgba(0,0,0,.4)', color:'#0f172a' } : { background:'#1e293b', color:'#64748b', cursor:'not-allowed' }}>
+                {loading
+                  ? <><Loader2Icon size={18} className="spin"/> Enviando…</>
+                  : <><SendIcon size={17}/> Lanzar Mi Idea <SparklesIcon size={15} className="opacity-70"/></>}
+              </button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: IdeaBoard
+    ════════════════════════════════════════════════════════════ */
+    function IdeaBoard({ ideas, loading, error, onRefresh }) {
+      const [search,   setSearch]   = useState('');
+      const [stFilter, setStFilter] = useState('TODOS');
+      const [sort,     setSort]     = useState({ field:'fecha', dir:'desc' });
+      const [modal,    setModal]    = useState(null);
+
+      const handleSort = (field) => setSort(p => ({ field, dir: p.field===field && p.dir==='asc' ? 'desc' : 'asc' }));
+
+      const filtered = useMemo(() => {
+        const term = normalize(search);
+        let list = ideas.filter(idea => {
+          if (stFilter !== 'TODOS') {
+            if (normStatus(getStatus(idea)) !== stFilter) return false;
+          }
+          if (!term) return true;
+          const hay = [getId(idea), getCreador(idea), getTitulo(idea), getArea(idea), getPilar(idea), getStatus(idea), getDescripcion(idea)].map(normalize).join(' ');
+          return hay.includes(term);
+        });
+        list.sort((a,b) => {
+          const va = normalize(sort.field==='id' ? getId(a) : sort.field==='titulo' ? getTitulo(a) : sort.field==='status' ? getStatus(a) : getFecha(a));
+          const vb = normalize(sort.field==='id' ? getId(b) : sort.field==='titulo' ? getTitulo(b) : sort.field==='status' ? getStatus(b) : getFecha(b));
+          const c  = va.localeCompare(vb, 'es');
+          return sort.dir==='asc' ? c : -c;
+        });
+        return list;
+      }, [ideas, search, stFilter, sort]);
+
+      const kpis = useMemo(() => ({
+        total        : ideas.length,
+        revision     : ideas.filter(i => normStatus(getStatus(i))==='EN REVISION').length,
+        aprobadas    : ideas.filter(i => normStatus(getStatus(i))==='APROBADA').length,
+        implementadas: ideas.filter(i => normStatus(getStatus(i))==='IMPLEMENTADA').length,
+      }), [ideas]);
+
+      const SortBtn = ({ field, label }) => {
+        const active = sort.field === field;
+        return (
+          <th onClick={() => handleSort(field)} className="px-3 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400 cursor-pointer select-none hover:text-cyan-400 transition-colors whitespace-nowrap">
+            <span className="inline-flex items-center gap-1">
+              {label}
+              <span className={active ? 'text-cyan-400' : 'text-slate-700'}>
+                {active && sort.dir==='asc' ? <ChevUp size={11}/> : <ChevDown size={11}/>}
+              </span>
+            </span>
+          </th>
+        );
+      };
+
+      if (loading) return (
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 spin" style={{ boxShadow:'0 0 20px rgba(34,211,238,.2)' }}/>
+          <p className="text-slate-400 text-sm tracking-wider">Cargando ideas del sistema…</p>
+        </div>
+      );
+
+      if (error) return (
+        <div className="max-w-md mx-auto py-20 text-center">
+          <div className="bg-red-900/20 border border-red-700/40 rounded-2xl p-8" style={{ boxShadow:'0 0 30px rgba(239,68,68,.1)' }}>
+            <AlertTriangle size={38} className="text-red-400 mx-auto mb-4"/>
+            <h3 className="text-white font-bold text-lg mb-2">Error de conexión</h3>
+            <p className="text-slate-400 text-sm mb-6">{error}</p>
+            <button onClick={onRefresh} className="flex items-center gap-2 mx-auto px-6 py-3 bg-red-500/20 border border-red-500/40 text-red-300 rounded-xl font-bold text-sm hover:bg-red-500/30 transition-all">
+              <RefreshCw size={14}/> Reintentar
+            </button>
+          </div>
+        </div>
+      );
+
+      return (
+        <>
+          {modal && <AuditModal idea={modal} onClose={()=>setModal(null)}/>}
+
+          <div className="space-y-4 animate-fade-in">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label:'Total Ideas',    val:kpis.total,         Icon:FileTextIcon,  bg:'bg-cyan-900/30',    border:'border-cyan-700/30',    txt:'text-cyan-300',    ic:'text-cyan-400'    },
+                { label:'En Revisión',    val:kpis.revision,      Icon:ClockIcon,     bg:'bg-yellow-900/30',  border:'border-yellow-700/30',  txt:'text-yellow-300',  ic:'text-yellow-400'  },
+                { label:'Aprobadas',      val:kpis.aprobadas,     Icon:ThumbsUp,      bg:'bg-blue-900/30',    border:'border-blue-700/30',    txt:'text-blue-300',    ic:'text-blue-400'    },
+                { label:'Implementadas',  val:kpis.implementadas, Icon:CheckCircle2,  bg:'bg-emerald-900/30', border:'border-emerald-700/30', txt:'text-emerald-300', ic:'text-emerald-400' },
+              ].map(k => (
+                <div key={k.label} className={`${k.border} border rounded-xl px-4 py-3 flex items-center gap-3 backdrop-blur-xl`} style={{ background:'rgba(7,15,35,0.78)' }}>
+                  <k.Icon size={18} className={k.ic}/>
+                  <div><div className={`text-xl font-black ${k.txt}`}>{k.val}</div><div className="text-slate-500 text-xs">{k.label}</div></div>
+                </div>
+              ))}
+            </div>
+
+            {/* Barra búsqueda + filtros */}
+            <div className="backdrop-blur-2xl border border-slate-700/40 rounded-2xl p-4" style={{ background:'rgba(7,15,35,0.75)', boxShadow:'0 8px 32px rgba(0,0,0,.5)' }}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <SearchIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"/>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por ID, creador, título, área o estado…"
+                         className="w-full bg-slate-800/80 text-white placeholder-slate-500 pl-10 pr-4 py-2.5 rounded-xl text-sm border border-slate-700/60 outline-none transition-all duration-300"
+                         style={{ boxShadow: search ? '0 0 0 1.5px rgba(34,211,238,.5), 0 0 12px rgba(34,211,238,.1)' : 'none' }}/>
+                  {search && <button onClick={()=>setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"><XIcon size={13}/></button>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <FilterIcon size={13} className="text-slate-500"/>
+                  {['TODOS','EN REVISION','APROBADA','IMPLEMENTADA','RECHAZADA'].map(s => (
+                    <button key={s} onClick={()=>setStFilter(s)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all border whitespace-nowrap
+                              ${stFilter===s ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-500'}`}>
+                      {s==='TODOS'?'Todos':s==='EN REVISION'?'Revisión':s.charAt(0)+s.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={onRefresh} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 transition-all flex-shrink-0">
+                  <RefreshCw size={13}/> Actualizar
+                </button>
+              </div>
+              {(search || stFilter!=='TODOS') && (
+                <p className="mt-2 text-slate-600 text-xs">
+                  Mostrando <span className="text-cyan-400 font-bold">{filtered.length}</span> de <span className="text-slate-400 font-bold">{ideas.length}</span> ideas
+                </p>
+              )}
+            </div>
+
+            {/* Tabla */}
+            {filtered.length === 0 ? (
+              <div className="text-center py-20">
+                <InboxIcon size={44} className="text-slate-700 mx-auto mb-4"/>
+                <p className="text-slate-500 font-bold text-lg">Sin resultados</p>
+                <p className="text-slate-600 text-sm mt-1">
+                  {ideas.length===0 ? '¡Sé el primero en lanzar una idea!' : 'Prueba con otros términos de búsqueda.'}
+                </p>
+              </div>
+            ) : (
+              <div className="backdrop-blur-2xl border border-slate-700/40 rounded-2xl overflow-hidden" style={{ background:'rgba(7,15,35,0.75)', boxShadow:'0 8px 32px rgba(0,0,0,.5)' }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-700/60" style={{ background:'linear-gradient(180deg,rgba(15,23,42,.85),rgba(15,23,42,.4))' }}>
+                        <SortBtn field="id"     label="ID"/>
+                        <SortBtn field="fecha"  label="Fecha"/>
+                        <th className="px-3 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Creador</th>
+                        <th className="px-3 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap hidden md:table-cell">Área</th>
+                        <th className="px-3 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap hidden lg:table-cell">Pilar</th>
+                        <SortBtn field="titulo" label="Título"/>
+                        <SortBtn field="status" label="Estado"/>
+                        <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-widest text-slate-400">Ficha</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {filtered.map((idea, i) => {
+                        const id = getId(idea);
+                        return (
+                          <tr key={id||i} className="group hover:bg-slate-800/40 transition-all duration-200">
+                            <td className="px-3 py-3.5 whitespace-nowrap">
+                              <span className="text-cyan-400 font-mono text-xs font-bold">{id||'—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5 whitespace-nowrap">
+                              <span className="text-slate-400 text-xs flex items-center gap-1"><CalendarIcon size={10} className="text-slate-600"/>{getFecha(idea)||'—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5">
+                              <span className="text-white text-sm font-medium flex items-center gap-1.5">
+                                <UserIcon size={11} className="text-slate-600 flex-shrink-0"/>
+                                <span className="truncate max-w-[130px]">{getCreador(idea)||'—'}</span>
+                              </span>
+                            </td>
+                            <td className="px-3 py-3.5 hidden md:table-cell">
+                              <span className="text-slate-300 text-xs flex items-center gap-1"><Building size={10} className="text-slate-600"/>{getArea(idea)||'—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5 hidden lg:table-cell">
+                              <span className="text-slate-300 text-xs flex items-center gap-1"><TargetIcon size={10} className="text-slate-600"/>{getPilar(idea)||'—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5 max-w-xs">
+                              <span className="text-white text-sm font-medium line-clamp-2 leading-snug">{getTitulo(idea)||'—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5 whitespace-nowrap">
+                              <StatusBadge status={getStatus(idea)}/>
+                            </td>
+                            <td className="px-3 py-3.5 text-center">
+                              <button onClick={()=>setModal(idea)} title="Ver Ficha de Auditoría"
+                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600/50 text-slate-400 hover:bg-cyan-500/20 hover:border-cyan-500/50 hover:text-cyan-300 transition-all duration-200">
+                                <EyeIcon size={13}/>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="border-t border-slate-800/60 px-4 py-2 flex items-center justify-between" style={{ background:'rgba(15,23,42,.4)' }}>
+                  <p className="text-slate-600 text-xs">{filtered.length} idea{filtered.length!==1?'s':''} · Clic en 👁 para ver la ficha auditoría e imprimirla</p>
+                  <p className="text-slate-700 text-xs hidden sm:block">CD Itagüí · Sistema DPO</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: Login Modal — Panel Administrativo
+    ════════════════════════════════════════════════════════════ */
+    function LoginModal({ onLogin, onClose }) {
+      const [usr,     setUsr]     = useState('');
+      const [pwd,     setPwd]     = useState('');
+      const [showPwd, setShowPwd] = useState(false);
+      const [error,   setError]   = useState('');
+      const [busy,    setBusy]    = useState(false);
+      const [focusU,  setFocusU]  = useState(false);
+      const [focusP,  setFocusP]  = useState(false);
+      const [shake,   setShake]   = useState(false);
+
+      useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        const esc = (e) => e.key === 'Escape' && onClose();
+        document.addEventListener('keydown', esc);
+        return () => { document.body.style.overflow = ''; document.removeEventListener('keydown', esc); };
+      }, [onClose]);
+
+      const triggerShake = () => {
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!usr.trim() || !pwd) return;
+        setError(''); setBusy(true);
+        await new Promise(r => setTimeout(r, 900));
+        const found = ADMIN_USERS.find(u => u.user === usr.trim() && u.password === pwd);
+        if (found) {
+          onLogin(found);
+        } else {
+          setError('Usuario o contraseña incorrectos. Acceso denegado.');
+          triggerShake();
+          setBusy(false);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{background:'rgba(2,6,23,0.97)', backdropFilter:'blur(24px)'}}
+             onClick={(e) => e.target === e.currentTarget && onClose()}>
+
+          {/* Orbs decorativos del fondo del modal */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-10" style={{background:'radial-gradient(circle,#818cf8,transparent 70%)'}}/>
+            <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-8" style={{background:'radial-gradient(circle,#22d3ee,transparent 70%)'}}/>
+          </div>
+
+          {/* Card principal */}
+          <div className={`relative w-full max-w-sm animate-fade-in ${shake ? 'animate-[shake_.4s_ease]' : ''}`}
+               style={shake ? {animation:'shake .4s ease'} : {}}>
+
+            {/* Halo exterior del card */}
+            <div className="absolute -inset-3 rounded-3xl opacity-25 blur-2xl pointer-events-none"
+                 style={{background:'radial-gradient(ellipse, #818cf8 0%, #22d3ee 50%, transparent 75%)'}}/>
+
+            <div className="relative backdrop-blur-2xl rounded-2xl overflow-hidden"
+                 style={{
+                   background:'rgba(7,15,35,0.96)',
+                   border:'1px solid rgba(129,140,248,0.35)',
+                   boxShadow:'0 0 80px rgba(129,140,248,.2), 0 0 30px rgba(34,211,238,.08), 0 30px 70px rgba(0,0,0,.9)'
+                 }}>
+
+              {/* Barra arcoíris superior */}
+              <div style={{height:3, background:'linear-gradient(90deg,#818cf8,#6366f1,#22d3ee,#10b981)'}}/>
+
+              {/* Grilla sutil */}
+              <div className="absolute inset-0 pointer-events-none opacity-30" style={{
+                backgroundImage:'linear-gradient(rgba(129,140,248,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(129,140,248,0.04) 1px,transparent 1px)',
+                backgroundSize:'28px 28px'
+              }}/>
+
+              {/* Encabezado */}
+              <div className="relative pt-10 pb-7 px-8 text-center">
+                {/* Ícono con capas de glow */}
+                <div className="relative mx-auto mb-5" style={{width:76,height:76}}>
+                  <div className="absolute inset-0 rounded-2xl blur-xl" style={{background:'rgba(129,140,248,0.5)'}}/>
+                  <div className="absolute inset-0 rounded-2xl animate-pulse-glow" style={{background:'rgba(129,140,248,0.08)',border:'1px solid rgba(129,140,248,0.6)',boxShadow:'0 0 40px rgba(129,140,248,.5)'}}/>
+                  <div className="relative w-full h-full rounded-2xl flex items-center justify-center"
+                       style={{background:'linear-gradient(135deg,rgba(129,140,248,0.2),rgba(99,102,241,0.1))'}}>
+                    <ShieldIcon size={34} className="text-violet-300"/>
+                  </div>
+                </div>
+
+                <div className="text-xs font-black uppercase tracking-[4px] mb-2" style={{color:'rgba(129,140,248,0.7)'}}>Acceso Restringido</div>
+                <h2 className="text-2xl font-black text-white tracking-wider mb-0.5">CD Itagüí</h2>
+                <p className="text-xs uppercase tracking-[2px]" style={{color:'rgba(100,116,139,0.8)'}}>Panel de Administración · DPO</p>
+
+                {/* Líneas decorativas */}
+                <div className="flex items-center gap-3 mt-5">
+                  <div className="flex-1 h-px" style={{background:'linear-gradient(90deg,transparent,rgba(129,140,248,0.3))'}}/>
+                  <LockIcon size={12} className="text-violet-600"/>
+                  <div className="flex-1 h-px" style={{background:'linear-gradient(90deg,rgba(129,140,248,0.3),transparent)'}}/>
+                </div>
+              </div>
+
+              {/* Formulario */}
+              <form onSubmit={handleSubmit} className="px-8 pb-4 space-y-4">
+
+                {/* Campo: Usuario */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest mb-2" style={{color:'rgba(100,116,139,0.9)'}}>
+                    <UserIcon size={9}/> Usuario
+                  </label>
+                  <div className="relative rounded-xl transition-all duration-300"
+                       style={{boxShadow: focusU ? '0 0 0 1.5px rgba(129,140,248,.85),0 0 20px rgba(129,140,248,.18)' : '0 0 0 1px rgba(51,65,85,.8)'}}>
+                    <UserIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{color:'rgba(100,116,139,0.7)'}}/>
+                    <input value={usr} onChange={e=>{setUsr(e.target.value);setError('');}}
+                           onFocus={()=>setFocusU(true)} onBlur={()=>setFocusU(false)}
+                           placeholder="Ingresa tu usuario" autoComplete="username"
+                           className="w-full placeholder-slate-700 pl-10 pr-4 py-3 text-sm rounded-xl border-0 outline-none text-white"
+                           style={{background: focusU ? 'rgba(30,41,59,.95)' : 'rgba(15,23,42,.8)'}}/>
+                  </div>
+                </div>
+
+                {/* Campo: Contraseña */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest mb-2" style={{color:'rgba(100,116,139,0.9)'}}>
+                    <LockIcon size={9}/> Contraseña
+                  </label>
+                  <div className="relative rounded-xl transition-all duration-300"
+                       style={{boxShadow: focusP ? '0 0 0 1.5px rgba(129,140,248,.85),0 0 20px rgba(129,140,248,.18)' : '0 0 0 1px rgba(51,65,85,.8)'}}>
+                    <LockIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{color:'rgba(100,116,139,0.7)'}}/>
+                    <input type={showPwd ? 'text' : 'password'}
+                           value={pwd} onChange={e=>{setPwd(e.target.value);setError('');}}
+                           onFocus={()=>setFocusP(true)} onBlur={()=>setFocusP(false)}
+                           placeholder="••••••••" autoComplete="current-password"
+                           className="w-full placeholder-slate-700 pl-10 pr-11 py-3 text-sm rounded-xl border-0 outline-none text-white"
+                           style={{background: focusP ? 'rgba(30,41,59,.95)' : 'rgba(15,23,42,.8)'}}/>
+                    <button type="button" onClick={()=>setShowPwd(p=>!p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:text-slate-300"
+                            style={{color:'rgba(100,116,139,0.7)'}}>
+                      {showPwd ? <EyeOffIcon size={15}/> : <EyeIcon size={15}/>}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error */}
+                {error && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs"
+                       style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',boxShadow:'0 0 15px rgba(239,68,68,.08)'}}>
+                    <AlertCircle size={12} className="flex-shrink-0"/>
+                    {error}
+                  </div>
+                )}
+
+                {/* Botón Ingresar */}
+                <button type="submit" disabled={busy || !usr.trim() || !pwd}
+                        className="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 mt-2"
+                        style={(!busy && usr.trim() && pwd)
+                          ? {background:'linear-gradient(135deg,#818cf8,#6366f1,#4f46e5)',color:'#fff',boxShadow:'0 0 30px rgba(129,140,248,.45),0 4px 20px rgba(0,0,0,.5)'}
+                          : {background:'rgba(30,41,59,.5)',color:'rgba(100,116,139,.5)',cursor:'not-allowed'}}>
+                  {busy
+                    ? <><Loader2Icon size={16} className="spin"/>Verificando acceso…</>
+                    : <><ShieldIcon size={15}/>Ingresar al Panel</>}
+                </button>
+              </form>
+
+              {/* Footer del modal */}
+              <div className="px-8 py-5 text-center border-t border-slate-800/60 mt-2">
+                <p className="text-xs uppercase tracking-[2px]" style={{color:'rgba(51,65,85,0.9)'}}>
+                  CD Itagüí · Sistema DPO Élite · Acceso Seguro
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE: Dashboard Gerencial
+    ════════════════════════════════════════════════════════════ */
+    const BarChart2Icon = ({size=24,className=''}) => <SvgIcon size={size} className={className}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon>;
+    const UsersIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon>;
+    const AwardIcon     = ({size=24,className=''}) => <SvgIcon size={size} className={className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></SvgIcon>;
+
+    function DashboardView({ ideas, loading, onRefresh }) {
+
+      /* ── Mini componente: Donut SVG ──────────────────────────── */
+      function DonutChart({ segs, size=120, hole=0.58, centerVal, centerTxt }) {
+        const total = segs.reduce((s,g) => s + g.v, 0);
+        if (!total) return (
+          <div className="flex items-center justify-center text-slate-600 text-xs" style={{width:size,height:size}}>
+            Sin datos
+          </div>
+        );
+        const r = size/2 - 6, ri = r * hole, cx = size/2, cy = size/2;
+        let cum = -Math.PI / 2;
+        const paths = segs.filter(s => s.v > 0).map(seg => {
+          const frac = seg.v / total;
+          const a0 = cum, a1 = cum + frac * 2 * Math.PI;
+          cum = a1;
+          const lg = frac > 0.5 ? 1 : 0;
+          const x0o = cx + r  * Math.cos(a0), y0o = cy + r  * Math.sin(a0);
+          const x1o = cx + r  * Math.cos(a1), y1o = cy + r  * Math.sin(a1);
+          const x0i = cx + ri * Math.cos(a1), y0i = cy + ri * Math.sin(a1);
+          const x1i = cx + ri * Math.cos(a0), y1i = cy + ri * Math.sin(a0);
+          const d = `M${x0o},${y0o} A${r},${r},0,${lg},1,${x1o},${y1o} L${x0i},${y0i} A${ri},${ri},0,${lg},0,${x1i},${y1i}Z`;
+          return { d, color: seg.c, pct: Math.round(frac * 100) };
+        });
+        return (
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} opacity={0.9}/>)}
+            {centerVal !== undefined && (
+              <>
+                <text x={cx} y={cy - 5} textAnchor="middle" fill="#f1f5f9" fontSize="17" fontWeight="bold" fontFamily="ui-sans-serif">{centerVal}</text>
+                {centerTxt && <text x={cx} y={cy + 9} textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="ui-sans-serif">{centerTxt}</text>}
+              </>
+            )}
+          </svg>
+        );
+      }
+
+      /* ── Mini componente: Barras horizontales ────────────────── */
+      function HBars({ data, h=13 }) {
+        const maxV = Math.max(...data.map(d => d.v), 1);
+        return (
+          <div className="space-y-2">
+            {data.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="text-xs text-slate-400 truncate" style={{minWidth:82,maxWidth:82}}>{d.l}</div>
+                <div className="flex-1 rounded-full overflow-hidden" style={{background:'rgba(30,41,59,0.9)',height:h}}>
+                  <div className="h-full rounded-full" style={{width:`${(d.v/maxV)*100}%`,background:d.c||'linear-gradient(90deg,#22d3ee,#10b981)',transition:'width .6s ease'}}/>
+                </div>
+                <div className="text-xs font-black text-white" style={{minWidth:16,textAlign:'right'}}>{d.v}</div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      /* ── Tarjeta glassmorfismo ────────────────────────────────── */
+      function GCard({ children, accent='cyan', className='' }) {
+        const bord = {cyan:'border-cyan-500/20',violet:'border-violet-500/20',emerald:'border-emerald-500/20',amber:'border-amber-500/20',rose:'border-rose-500/20'}[accent]||'border-slate-700/40';
+        return (
+          <div className={`backdrop-blur-2xl rounded-2xl border ${bord} p-5 ${className}`}
+               style={{background:'rgba(7,15,35,0.80)',boxShadow:'0 8px 32px rgba(0,0,0,.5)'}}>
+            {children}
+          </div>
+        );
+      }
+
+      const SL = ({children}) => (
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5">{children}</p>
+      );
+
+      /* ── Métricas calculadas ──────────────────────────────────── */
+      const m = useMemo(() => {
+        const byStatus   = {'EN REVISION':0,'APROBADA':0,'IMPLEMENTADA':0,'RECHAZADA':0};
+        const byPilar    = {};
+        const byArea     = {};
+        const byOp       = {LIS:0, KA:0};
+        const byBudget   = {Si:0, No:0};
+        const byMes      = {};
+        const byPerson   = {};
+
+        ideas.forEach(idea => {
+          const st = normStatus(getStatus(idea));
+          byStatus[st] = (byStatus[st]||0) + 1;
+
+          const pilar = getPilar(idea) || 'Sin pilar';
+          byPilar[pilar] = (byPilar[pilar]||0) + 1;
+
+          const area = getArea(idea) || 'Sin área';
+          byArea[area] = (byArea[area]||0) + 1;
+
+          const op = getOperador(idea).toUpperCase();
+          if (op === 'LIS') byOp.LIS++; else if (op === 'KA') byOp.KA++;
+
+          const pres = getPresupuesto(idea);
+          if (!pres || pres === 'No requiere presupuesto') byBudget.No++; else byBudget.Si++;
+
+          const cr = getCreador(idea) || 'Anónimo';
+          byPerson[cr] = (byPerson[cr]||0) + 1;
+
+          const fecha = getFecha(idea);
+          if (fecha) {
+            const pts = fecha.split('/');
+            if (pts.length >= 3) {
+              const key = pts[2]?.split(' ')[0] + '-' + pts[1];
+              byMes[key] = (byMes[key]||0) + 1;
+            }
+          }
+        });
+
+        const total      = ideas.length;
+        const revisadas  = byStatus.APROBADA + byStatus.RECHAZADA;
+        const tasaAprob  = revisadas > 0 ? Math.round(byStatus.APROBADA / revisadas * 100) : 0;
+        const tasaImpl   = total > 0 ? Math.round(byStatus.IMPLEMENTADA / total * 100) : 0;
+        const topColab   = Object.entries(byPerson).sort((a,b)=>b[1]-a[1]).slice(0,5);
+        const mesKeys    = Object.keys(byMes).sort();
+        const maxMes     = Math.max(...mesKeys.map(k=>byMes[k]),1);
+        const MESES      = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+        return { byStatus, byPilar, byArea, byOp, byBudget, total, tasaAprob, tasaImpl, topColab, byMes, mesKeys, maxMes, MESES };
+      }, [ideas]);
+
+      if (loading) return (
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <div className="w-16 h-16 rounded-full border-2 border-violet-500/30 border-t-violet-400 spin" style={{boxShadow:'0 0 20px rgba(129,140,248,.2)'}}/>
+          <p className="text-slate-400 text-sm tracking-wider">Calculando métricas gerenciales…</p>
+        </div>
+      );
+
+      if (!m.total) return (
+        <div className="text-center py-24">
+          <BarChart2Icon size={44} className="text-slate-700 mx-auto mb-4"/>
+          <p className="text-slate-500 font-bold text-lg">Sin datos para analizar</p>
+          <p className="text-slate-600 text-sm mt-1">Registra la primera idea para ver el dashboard.</p>
+        </div>
+      );
+
+      const PILARES_COLORS = ['linear-gradient(90deg,#22d3ee,#0891b2)','linear-gradient(90deg,#10b981,#059669)','linear-gradient(90deg,#818cf8,#7c3aed)','linear-gradient(90deg,#f59e0b,#d97706)','linear-gradient(90deg,#f43f5e,#e11d48)'];
+      const AREAS_COLORS   = ['linear-gradient(90deg,#22d3ee,#10b981)','linear-gradient(90deg,#818cf8,#22d3ee)','linear-gradient(90deg,#f59e0b,#f43f5e)'];
+
+      const statusSegs   = [{l:'En Revisión',v:m.byStatus['EN REVISION'],c:'#f59e0b'},{l:'Aprobada',v:m.byStatus['APROBADA'],c:'#3b82f6'},{l:'Implementada',v:m.byStatus['IMPLEMENTADA'],c:'#10b981'},{l:'Rechazada',v:m.byStatus['RECHAZADA'],c:'#475569'}];
+      const opSegs       = [{l:'LIS',v:m.byOp.LIS,c:'#3b82f6'},{l:'KA',v:m.byOp.KA,c:'#f59e0b'}];
+      const budgetSegs   = [{l:'Requiere',v:m.byBudget.Si,c:'#f59e0b'},{l:'No requiere',v:m.byBudget.No,c:'#10b981'}];
+      const pilarBars    = Object.entries(m.byPilar).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:PILARES_COLORS[i%5]}));
+      const areaBars     = Object.entries(m.byArea).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:AREAS_COLORS[i%3]}));
+
+      return (
+        <div className="space-y-4 animate-fade-in">
+
+          {/* ── KPI Mega Row ─────────────────────────────────────── */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {[
+              {label:'Total Ideas',   val:m.total,                    c:'text-cyan-300',    b:'border-cyan-700/30',    ico:'💡'},
+              {label:'En Revisión',   val:m.byStatus['EN REVISION'],  c:'text-yellow-300',  b:'border-yellow-700/30',  ico:'🔍'},
+              {label:'Aprobadas',     val:m.byStatus['APROBADA'],     c:'text-blue-300',    b:'border-blue-700/30',    ico:'✅'},
+              {label:'Implementadas', val:m.byStatus['IMPLEMENTADA'], c:'text-emerald-300', b:'border-emerald-700/30', ico:'🏆'},
+              {label:'Rechazadas',    val:m.byStatus['RECHAZADA'],    c:'text-slate-400',   b:'border-slate-600/30',   ico:'↩️'},
+              {label:'Tasa Impl.',    val:m.tasaImpl+'%',             c:'text-violet-300',  b:'border-violet-700/30',  ico:'📈'},
+            ].map(k => (
+              <div key={k.label} className={`${k.b} border rounded-xl px-3 py-4 text-center backdrop-blur-xl`}
+                   style={{background:'rgba(7,15,35,0.80)'}}>
+                <div className="text-xl mb-0.5">{k.ico}</div>
+                <div className={`text-2xl font-black ${k.c} leading-none`}>{k.val}</div>
+                <div className="text-slate-500 text-xs mt-1 leading-tight">{k.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Fila 2: Estado + Pilares + Top Colaboradores ─────── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            {/* Estado del Pipeline */}
+            <GCard accent="cyan">
+              <SL>📊 Estado del Pipeline</SL>
+              <div className="flex items-center gap-3">
+                <DonutChart segs={statusSegs} size={118} hole={0.56} centerVal={m.total} centerTxt="ideas"/>
+                <div className="flex-1 space-y-2 min-w-0">
+                  {statusSegs.map(s => (
+                    <div key={s.l} className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:s.c}}/>
+                        <span className="text-xs text-slate-400 truncate">{s.l}</span>
+                      </div>
+                      <span className="text-xs font-black text-white flex-shrink-0">{s.v}</span>
+                    </div>
+                  ))}
+                  <div className="pt-2 mt-1 border-t border-slate-800/80">
+                    <div className="text-xs text-slate-600">Tasa de aprobación</div>
+                    <div className="text-lg font-black text-cyan-300">{m.tasaAprob}%</div>
+                  </div>
+                </div>
+              </div>
+            </GCard>
+
+            {/* Ideas por Pilar DPO */}
+            <GCard accent="violet">
+              <SL>🎯 Ideas por Pilar DPO</SL>
+              <HBars data={pilarBars} h={14}/>
+            </GCard>
+
+            {/* Top Colaboradores */}
+            <GCard accent="emerald">
+              <SL><AwardIcon size={11}/>Top Colaboradores</SL>
+              <div className="space-y-2.5">
+                {m.topColab.map(([name, count], i) => {
+                  const medals = ['🥇','🥈','🥉'];
+                  return (
+                    <div key={name} className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-sm"
+                           style={{background:i<3?'rgba(251,191,36,0.1)':'rgba(51,65,85,0.5)',border:i<3?'1px solid rgba(251,191,36,0.3)':'1px solid rgba(51,65,85,0.6)'}}>
+                        {medals[i] || <span className="text-slate-500 text-xs font-bold">{i+1}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-white font-medium truncate">{name}</div>
+                        <div className="w-full rounded-full overflow-hidden mt-0.5" style={{height:3,background:'rgba(30,41,59,0.9)'}}>
+                          <div className="h-full rounded-full" style={{width:`${(count/m.topColab[0][1])*100}%`,background:'linear-gradient(90deg,#22d3ee,#10b981)'}}/>
+                        </div>
+                      </div>
+                      <div className="text-xs font-black text-emerald-300 flex-shrink-0">{count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </GCard>
+          </div>
+
+          {/* ── Fila 3: Área + LIS vs KA + Presupuesto ──────────── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            {/* Por Área */}
+            <GCard accent="amber">
+              <SL>🏢 Ideas por Área</SL>
+              <HBars data={areaBars} h={16}/>
+            </GCard>
+
+            {/* LIS vs KA */}
+            <GCard accent="cyan">
+              <SL>🔵 Operador LIS vs 🟠 KA</SL>
+              <div className="flex items-center justify-around">
+                <DonutChart segs={opSegs} size={110} hole={0.54} centerVal={m.byOp.LIS+m.byOp.KA} centerTxt="total"/>
+                <div className="flex flex-col gap-4">
+                  {opSegs.map(s => (
+                    <div key={s.l} className="text-center">
+                      <div className="text-2xl font-black" style={{color:s.c}}>{s.v}</div>
+                      <div className="text-xs text-slate-500">{s.l}</div>
+                      <div className="text-xs font-bold text-slate-400">
+                        {m.byOp.LIS+m.byOp.KA > 0 ? Math.round(s.v/(m.byOp.LIS+m.byOp.KA)*100) : 0}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </GCard>
+
+            {/* Presupuesto */}
+            <GCard accent="violet">
+              <SL>💰 Requerimiento de Presupuesto</SL>
+              <div className="flex items-center justify-around">
+                <DonutChart segs={budgetSegs} size={110} hole={0.54} centerVal={m.byBudget.Si} centerTxt="requieren"/>
+                <div className="flex flex-col gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-yellow-300">{m.byBudget.Si}</div>
+                    <div className="text-xs text-slate-500 leading-tight">Con<br/>presupuesto</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-emerald-300">{m.byBudget.No}</div>
+                    <div className="text-xs text-slate-500 leading-tight">Sin<br/>presupuesto</div>
+                  </div>
+                </div>
+              </div>
+            </GCard>
+          </div>
+
+          {/* ── Fila 4: Timeline mensual ──────────────────────────── */}
+          {m.mesKeys.length > 0 && (
+            <GCard accent="cyan">
+              <div className="flex items-center justify-between mb-4">
+                <SL>📅 Ideas Registradas por Mes</SL>
+                <button onClick={onRefresh} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-cyan-400 transition-colors">
+                  <RefreshCw size={11}/> Actualizar
+                </button>
+              </div>
+              <div className="flex items-end gap-1.5" style={{height:88}}>
+                {m.mesKeys.map(key => {
+                  const val = m.byMes[key];
+                  const pct = val / m.maxMes;
+                  const [yyyy, mm] = key.split('-');
+                  const label = (m.MESES[parseInt(mm)]||mm) + ' ' + (yyyy||'');
+                  return (
+                    <div key={key} className="flex-1 flex flex-col items-center gap-1 group">
+                      <div className="text-xs font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity" style={{fontSize:'9px'}}>{val}</div>
+                      <div className="w-full rounded-t-md relative overflow-hidden"
+                           style={{height:`${Math.max(pct*70,4)}px`,background:'linear-gradient(180deg,#22d3ee,#0891b2)',minWidth:6,transition:'height .6s ease'}}>
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity" style={{background:'#fff'}}/>
+                      </div>
+                      <div className="text-slate-600 text-center whitespace-nowrap" style={{fontSize:'8px'}}>{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </GCard>
+          )}
+
+          {/* ── Nota pie ──────────────────────────────────────────── */}
+          <p className="text-center text-slate-700 text-xs">Dashboard Gerencial · CD Itagüí · Ideamos Juntos · Sistema DPO</p>
+        </div>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       COMPONENTE RAÍZ: App
+    ════════════════════════════════════════════════════════════ */
+    function App() {
+      const [view,      setView]      = useState('form');
+      const [ideas,     setIdeas]     = useState([]);
+      const [loading,   setLoading]   = useState(false);
+      const [error,     setError]     = useState(null);
+      const [toast,     setToast]     = useState(null);
+      const [isAdmin,   setIsAdmin]   = useState(false);
+      const [adminUser, setAdminUser] = useState(null);
+      const [showLogin, setShowLogin] = useState(false);
+
+      // ── Cargar ideas ──────────────────────────────────────────
+      const fetchIdeas = useCallback(async () => {
+        setLoading(true); setError(null);
+        if (IS_DEMO) {
+          await new Promise(r => setTimeout(r, 800));
+          setIdeas(MOCK_IDEAS);
+          setLoading(false); return;
+        }
+        try {
+          const res  = await fetch(GAS_URL);
+          const json = await res.json();
+          if (json.success) setIdeas(json.data || []);
+          else setError(json.message || 'Error al cargar ideas.');
+        } catch { setError('No se pudo conectar con el servidor. Verifica la URL del Web App.'); }
+        setLoading(false);
+      }, []);
+
+      useEffect(() => { if (view==='board' || view==='dashboard') fetchIdeas(); }, [view, fetchIdeas]);
+
+      // ── Enviar idea ───────────────────────────────────────────
+      const handleSubmit = async (formData) => {
+        setLoading(true);
+        if (IS_DEMO) {
+          await new Promise(r => setTimeout(r, 1200));
+          const newId = `IDEA-2026-${String(MOCK_IDEAS.length+1).padStart(4,'0')}`;
+          const newIdea = {
+            ID_IDEA: newId, FECHA: new Date().toLocaleDateString('es-CO')+' '+new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+            CREADOR: formData.creador, OPERADOR: formData.operador, CARGO: formData.cargo,
+            TELEFONO: formData.telefono, AREA: formData.area, PILAR_IMPACTADO: formData.pilar,
+            TITULO_IDEA: formData.titulo, DESCRIPCION: formData.descripcion, IMPACTO_ESPERADO: formData.impacto,
+            NECESITA_PRESUPUESTO: formData.presupuesto, STATUS: 'EN REVISION', FEEDBACK_COMITE: ''
+          };
+          MOCK_IDEAS.unshift(newIdea);
+          setLoading(false);
+          showToast({ type:'success', message:`Idea ${newId} registrada (modo demo)`, id: newId });
+          return { ok: true, id: newId };
+        }
+        try {
+          const res  = await fetch(GAS_URL, { method:'POST', body: JSON.stringify({ action:'CREATE', ...formData }) });
+          const json = await res.json();
+          if (json.success) {
+            showToast({ type:'success', message: json.message, id: json.id });
+            setLoading(false);
+            return { ok: true, id: json.id };
+          } else {
+            showToast({ type:'error', message: json.message });
+            setLoading(false); return { ok: false };
+          }
+        } catch {
+          showToast({ type:'error', message:'Error de conexión.' });
+          setLoading(false); return { ok: false };
+        }
+      };
+
+      const showToast = (t) => {
+        setToast(t);
+        setTimeout(() => setToast(null), 6000);
+      };
+
+      // ── Fondo animado ─────────────────────────────────────────
+      /* ════════════════════════════════════════════════════════════
+       COMPONENTE: Red Neuronal Animada sobre el CD
+       Canvas fijo con puntos en áreas clave + líneas animadas
+    ════════════════════════════════════════════════════════════ */
+    const CD_NODES = [
+      { x:0.18, y:0.28, label:'Recepción',     color:'#22d3ee' },
+      { x:0.42, y:0.18, label:'Almacén A',     color:'#10b981' },
+      { x:0.68, y:0.22, label:'Almacén B',     color:'#10b981' },
+      { x:0.30, y:0.52, label:'Picking',       color:'#f59e0b' },
+      { x:0.58, y:0.48, label:'Despacho',      color:'#22d3ee' },
+      { x:0.80, y:0.55, label:'Cargue',        color:'#f59e0b' },
+      { x:0.15, y:0.72, label:'Administración',color:'#818cf8' },
+      { x:0.50, y:0.75, label:'Mantenimiento', color:'#f43f5e' },
+      { x:0.82, y:0.80, label:'Control Calidad',color:'#818cf8'},
+    ];
+    const CD_EDGES = [
+      [0,1],[0,3],[1,2],[1,3],[2,4],[3,4],[3,6],[4,5],[4,7],[5,8],[6,7],[7,8]
+    ];
+
+    function NeuralCanvas() {
+      const canvasRef = useRef(null);
+      const animRef   = useRef(null);
+      const tickRef   = useRef(0);
+
+      useEffect(() => {
+        const canvas  = canvasRef.current;
+        if (!canvas) return;
+        const ctx     = canvas.getContext('2d');
+
+        const resize = () => {
+          canvas.width  = window.innerWidth;
+          canvas.height = window.innerHeight;
+        };
+        resize();
+        window.addEventListener('resize', resize);
+
+        const draw = () => {
+          tickRef.current += 0.012;
+          const t  = tickRef.current;
+          const W  = canvas.width;
+          const H  = canvas.height;
+
+          ctx.clearRect(0, 0, W, H);
+
+          // Calcular posiciones absolutas de cada nodo
+          const pts = CD_NODES.map(n => ({ x: n.x * W, y: n.y * H, color: n.color, label: n.label }));
+
+          // Dibujar aristas animadas con pulsos de luz
+          CD_EDGES.forEach(([i, j], edgeIdx) => {
+            const a = pts[i], b = pts[j];
+            const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            grad.addColorStop(0, a.color + '44');
+            grad.addColorStop(1, b.color + '44');
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth   = 1;
+            ctx.stroke();
+
+            // Pulso de luz viajando por la línea
+            const phase = ((t * 0.7 + edgeIdx * 0.55) % 1);
+            const px = a.x + (b.x - a.x) * phase;
+            const py = a.y + (b.y - a.y) * phase;
+            const pulse = ctx.createRadialGradient(px, py, 0, px, py, 6);
+            pulse.addColorStop(0, '#ffffff99');
+            pulse.addColorStop(1, 'transparent');
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fillStyle = pulse;
+            ctx.fill();
+          });
+
+          // Dibujar nodos
+          pts.forEach((p, idx) => {
+            const breathe = 1 + 0.18 * Math.sin(t * 1.4 + idx * 0.9);
+            const r       = 6 * breathe;
+
+            // Halo exterior
+            const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.5);
+            halo.addColorStop(0, p.color + '55');
+            halo.addColorStop(1, 'transparent');
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r * 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = halo;
+            ctx.fill();
+
+            // Núcleo del nodo
+            const core = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+            core.addColorStop(0, '#ffffff');
+            core.addColorStop(0.4, p.color);
+            core.addColorStop(1, p.color + 'aa');
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = core;
+            ctx.fill();
+
+            // Etiqueta flotante
+            ctx.font        = 'bold 10px ui-sans-serif, system-ui, sans-serif';
+            ctx.textAlign   = 'center';
+            ctx.letterSpacing = '0.5px';
+            // Sombra del texto
+            ctx.shadowColor = '#000000cc';
+            ctx.shadowBlur  = 6;
+            ctx.fillStyle   = '#ffffffcc';
+            ctx.fillText(p.label, p.x, p.y - r * 1.8 - 2);
+            ctx.shadowBlur  = 0;
+          });
+
+          animRef.current = requestAnimationFrame(draw);
+        };
+
+        draw();
+        return () => {
+          cancelAnimationFrame(animRef.current);
+          window.removeEventListener('resize', resize);
+        };
+      }, []);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          className="fixed inset-0 pointer-events-none"
+          style={{ zIndex: 1 }}
+          aria-hidden="true"
+        />
+      );
+    }
+
+    /* ─────────────────────────────────────────────────────────
+       FONDO: Overlay azulado oscuro sobre la foto del CD
+    ───────────────────────────────────────────────────────── */
+    const Orbs = () => (
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        {/* Overlay principal — da el tono neón oscuro sobre la foto */}
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(160deg, rgba(2,6,23,0.80) 0%, rgba(7,20,46,0.75) 50%, rgba(2,6,23,0.85) 100%)'
+        }}/>
+        {/* Orb cian — esquina superior izquierda */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl"
+             style={{ background:'radial-gradient(circle,rgba(34,211,238,0.18),transparent 70%)' }}/>
+        {/* Orb esmeralda — centro derecho */}
+        <div className="absolute top-1/3 -right-40 w-80 h-80 rounded-full blur-3xl"
+             style={{ background:'radial-gradient(circle,rgba(16,185,129,0.14),transparent 70%)' }}/>
+        {/* Orb violeta — inferior izquierdo */}
+        <div className="absolute -bottom-20 left-1/4 w-72 h-72 rounded-full blur-3xl"
+             style={{ background:'radial-gradient(circle,rgba(129,140,248,0.12),transparent 70%)' }}/>
+        {/* Grilla sutil */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(34,211,238,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,0.04) 1px,transparent 1px)',
+          backgroundSize: '48px 48px',
+          opacity: 0.6
+        }}/>
+      </div>
+    );
+
+      const NavBtn = ({ id, label, Icon, count }) => {
+        const active = view === id;
+        return (
+          <button onClick={()=>setView(id)}
+                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-300 focus:outline-none border
+                    ${active ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 border-transparent'}`}
+                  style={active ? { boxShadow:'0 0 20px rgba(34,211,238,.25)' } : {}}>
+            <Icon size={15} className={active ? 'text-cyan-400' : 'text-slate-500'}/>
+            <span className="hidden sm:inline">{label}</span>
+            {count > 0 && <span className="ml-1 bg-cyan-500 text-slate-900 text-xs font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{count}</span>}
+            {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-cyan-400" style={{ boxShadow:'0 0 8px rgba(34,211,238,.8)' }}/>}
+          </button>
+        );
+      };
+
+      return (
+        <div className="min-h-screen text-white" style={{ background:'transparent' }}>
+          <Orbs/>
+          <NeuralCanvas/>
+
+          {/* Login Modal */}
+          {showLogin && (
+            <LoginModal
+              onLogin={(u) => {
+                setIsAdmin(true);
+                setAdminUser(u);
+                setShowLogin(false);
+                setView('board');
+                showToast({ type:'success', message:`Bienvenido, ${u.nombre}. Panel activo.` });
+              }}
+              onClose={() => setShowLogin(false)}
+            />
+          )}
+
+          {/* Toast */}
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 flex items-start gap-3 px-5 py-4 rounded-xl border backdrop-blur-xl max-w-sm shadow-2xl animate-slide-in
+              ${toast.type==='success' ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-200' : 'bg-red-900/80 border-red-500/50 text-red-200'}`}
+              style={{ boxShadow: toast.type==='success' ? '0 0 30px rgba(16,185,129,.3)' : '0 0 30px rgba(239,68,68,.3)' }}>
+              <span className="text-xl mt-0.5">{toast.type==='success' ? '✅' : '❌'}</span>
+              <div className="flex-1">
+                <p className="font-bold text-sm">{toast.type==='success' ? '¡Idea Registrada!' : 'Error'}</p>
+                <p className="text-xs opacity-80 mt-0.5">{toast.message}</p>
+                {toast.id && <p className="text-xs font-mono mt-1 opacity-70">ID: {toast.id}</p>}
+              </div>
+              <button onClick={()=>setToast(null)} className="opacity-50 hover:opacity-100 transition-opacity text-lg">&times;</button>
+            </div>
+          )}
+
+          {/* Navbar */}
+          <nav className="sticky top-0 z-40 border-b border-slate-700/50 backdrop-blur-xl" style={{ background:'rgba(2,6,23,.90)', position:'sticky', zIndex:40 }}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16 gap-4">
+                {/* Logo */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center animate-pulse-glow">
+                    <Lightbulb size={19} className="text-cyan-400"/>
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-base sm:text-lg font-black tracking-wide text-white truncate leading-tight">CD Itagüí</h1>
+                    <p className="text-xs text-cyan-400 font-bold tracking-widest uppercase leading-tight">Ideamos Juntos</p>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 ml-2">
+                    <ChevRight size={13} className="text-slate-700"/>
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-900/40 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                      <ShieldIcon size={10}/> DPO ÉLITE
+                    </span>
+                  </div>
+                </div>
+                {/* Nav buttons */}
+                <div className="flex items-center gap-2">
+                  {/* Área pública — siempre visible */}
+                  <NavBtn id="form" label="Lanzar Idea" Icon={Lightbulb}/>
+
+                  {/* Área admin — solo visible con sesión */}
+                  {isAdmin && <>
+                    <NavBtn id="board"     label="Tablero"   Icon={LayoutDash} count={ideas.length}/>
+                    <NavBtn id="dashboard" label="Dashboard" Icon={BarChart2Icon}/>
+                  </>}
+
+                  {/* Separador */}
+                  <div className="w-px h-6 bg-slate-700/60 mx-1"/>
+
+                  {/* Botón CD Itagüí — Login / Sesión activa */}
+                  {!isAdmin ? (
+                    <button onClick={() => setShowLogin(true)}
+                            className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-300 border"
+                            style={{
+                              background:'rgba(129,140,248,0.10)',
+                              border:'1px solid rgba(129,140,248,0.40)',
+                              color:'#a5b4fc',
+                              boxShadow:'0 0 18px rgba(129,140,248,.12)'
+                            }}
+                            onMouseEnter={e=>{e.currentTarget.style.background='rgba(129,140,248,0.18)';e.currentTarget.style.boxShadow='0 0 26px rgba(129,140,248,.25)';}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='rgba(129,140,248,0.10)';e.currentTarget.style.boxShadow='0 0 18px rgba(129,140,248,.12)';}}>
+                      <ShieldIcon size={14} className="text-violet-400 flex-shrink-0"/>
+                      <span className="hidden sm:inline whitespace-nowrap">CD Itagüí</span>
+                      <LockIcon size={10} style={{color:'rgba(129,140,248,0.55)'}}/>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      {/* Chip usuario logueado */}
+                      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-l-xl rounded-r-none border-r-0"
+                           style={{background:'rgba(16,185,129,0.10)',border:'1px solid rgba(16,185,129,0.35)',color:'#6ee7b7'}}>
+                        <LockOpenIcon size={11} className="text-emerald-400"/>
+                        <span className="text-xs font-bold truncate max-w-[90px]">{adminUser?.nombre || 'Admin'}</span>
+                      </div>
+                      {/* Botón cerrar sesión */}
+                      <button onClick={() => { setIsAdmin(false); setAdminUser(null); setView('form'); }}
+                              title="Cerrar sesión"
+                              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl sm:rounded-l-none font-bold text-xs tracking-wider uppercase transition-all duration-200 border"
+                              style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.30)',color:'#f87171',borderLeft:'none'}}
+                              onMouseEnter={e=>{e.currentTarget.style.background='rgba(239,68,68,0.20)';}}
+                              onMouseLeave={e=>{e.currentTarget.style.background='rgba(239,68,68,0.08)';}}>
+                        <LogOutIcon size={13}/>
+                        <span className="hidden sm:inline">Salir</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="h-px" style={{ background:'linear-gradient(90deg,transparent,rgba(34,211,238,.5) 30%,rgba(16,185,129,.4) 70%,transparent)' }}/>
+          </nav>
+
+          {/* Hero */}
+          {view==='form' && (
+            <div className="relative text-center pt-10 pb-4 px-4" style={{ zIndex:10 }}>
+              <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 px-4 py-1.5 rounded-full mb-5">
+                <StarIcon size={11} className="text-yellow-400"/><span className="text-cyan-400 text-xs font-bold tracking-widest uppercase">Motor de Innovación · Sistema DPO</span><StarIcon size={11} className="text-yellow-400"/>
+              </div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-3 leading-tight">
+                <span className="text-white">¿Tienes una </span>
+                <span className="text-transparent bg-clip-text" style={{ backgroundImage:'linear-gradient(135deg,#22d3ee,#10b981)' }}>gran idea?</span>
+              </h2>
+              <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">Cada mejora comienza con una idea. Compártela y transforma el Centro de Distribución.</p>
+              <div className="flex items-center justify-center gap-5 mt-5 text-sm text-slate-500">
+                <span className="flex items-center gap-1.5"><Zap size={13} className="text-yellow-400"/> Impacto Real</span>
+                <span className="text-slate-700">|</span>
+                <span className="flex items-center gap-1.5"><ShieldIcon size={13} className="text-emerald-400"/> Auditado DPO</span>
+                <span className="text-slate-700">|</span>
+                <span className="flex items-center gap-1.5"><StarIcon size={13} className="text-cyan-400"/> Reconocimiento</span>
+              </div>
+            </div>
+          )}
+          {view==='board' && (
+            <div className="relative text-center pt-7 pb-2 px-4" style={{ zIndex:10 }}>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
+                Tablero de <span className="text-transparent bg-clip-text" style={{ backgroundImage:'linear-gradient(135deg,#22d3ee,#10b981)' }}>Innovación</span>
+              </h2>
+              <p className="text-slate-500 text-sm">Pipeline completo de ideas · CD Itagüí DPO</p>
+            </div>
+          )}
+          {view==='dashboard' && (
+            <div className="relative text-center pt-7 pb-2 px-4" style={{ zIndex:10 }}>
+              <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 px-4 py-1.5 rounded-full mb-4">
+                <BarChart2Icon size={11} className="text-violet-400"/><span className="text-violet-400 text-xs font-bold tracking-widest uppercase">Inteligencia Operativa · Sistema DPO</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
+                Dashboard <span className="text-transparent bg-clip-text" style={{ backgroundImage:'linear-gradient(135deg,#818cf8,#22d3ee)' }}>Gerencial</span>
+              </h2>
+              <p className="text-slate-500 text-sm">Métricas de innovación en tiempo real · CD Itagüí DPO</p>
+            </div>
+          )}
+
+          {/* Main */}
+          <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-16" style={{ zIndex:10 }}>
+            {view==='form' || !isAdmin
+              ? <IdeaForm onSubmit={handleSubmit} loading={loading}/>
+              : view==='dashboard'
+              ? <DashboardView ideas={ideas} loading={loading} onRefresh={fetchIdeas}/>
+              : <IdeaBoard ideas={ideas} loading={loading} error={error} onRefresh={fetchIdeas}/>
+            }
+          </main>
+
+          {/* Footer */}
+          <footer className="relative border-t border-slate-700/40 py-4 text-center backdrop-blur-sm" style={{ zIndex:10, background:'rgba(2,6,23,0.70)' }}>
+            <p className="text-slate-700 text-xs tracking-wider">CD ITAGÜÍ · IDEAMOS JUNTOS · SISTEMA DPO ÉLITE · <span className="text-cyan-900">innovación continua</span></p>
+          </footer>
+        </div>
+      );
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       RENDER
+    ════════════════════════════════════════════════════════════ */
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>

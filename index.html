@@ -212,13 +212,46 @@
     /* ════════════════════════════════════════════════════════════
        COMPONENTE: Modal de Auditoría PDF
     ════════════════════════════════════════════════════════════ */
-    function AuditModal({ idea, onClose }) {
+    function AuditModal({ idea, onClose, onUpdate }) {
+      const [editStatus,   setEditStatus]   = useState(normStatus(getStatus(idea)));
+      const [editFeedback, setEditFeedback] = useState(getFeedback(idea));
+      const [saving,       setSaving]       = useState(false);
+      const [saved,        setSaved]        = useState(false);
+      const [saveError,    setSaveError]    = useState('');
+
       useEffect(() => {
         document.body.style.overflow = 'hidden';
         const esc = (e) => e.key === 'Escape' && onClose();
         document.addEventListener('keydown', esc);
         return () => { document.body.style.overflow = ''; document.removeEventListener('keydown', esc); };
       }, [onClose]);
+
+      const handleUpdateStatus = async () => {
+        setSaving(true); setSaveError(''); setSaved(false);
+        const ideaId = getId(idea);
+        if (IS_DEMO) {
+          await new Promise(r => setTimeout(r, 700));
+          const idx = MOCK_IDEAS.findIndex(i => getId(i) === ideaId);
+          if (idx !== -1) { MOCK_IDEAS[idx].STATUS = editStatus; MOCK_IDEAS[idx].FEEDBACK_COMITE = editFeedback; }
+          setSaved(true); setSaving(false);
+          setTimeout(() => { onUpdate && onUpdate(); onClose(); }, 1200);
+          return;
+        }
+        try {
+          const res  = await fetch(GAS_URL, { method:'POST', body: JSON.stringify({ action:'UPDATE_STATUS', id:ideaId, status:editStatus, feedback:editFeedback }) });
+          const json = await res.json();
+          if (json.success) { setSaved(true); setTimeout(() => { onUpdate && onUpdate(); onClose(); }, 1200); }
+          else setSaveError(json.message || 'Error al actualizar.');
+        } catch { setSaveError('Error de conexión al actualizar.'); }
+        setSaving(false);
+      };
+
+      const STATUS_BTN = [
+        { key:'EN REVISION',  label:'En Revisión',  bg:'#713f12', fg:'#fef08a', border:'#854d0e' },
+        { key:'APROBADA',     label:'Aprobada',     bg:'#1e3a5f', fg:'#93c5fd', border:'#1e40af' },
+        { key:'IMPLEMENTADA', label:'Implementada', bg:'#14532d', fg:'#86efac', border:'#166534' },
+        { key:'RECHAZADA',    label:'Rechazada',    bg:'#1e293b', fg:'#94a3b8', border:'#334155' },
+      ];
 
       const id     = getId(idea);
       const status = getStatus(idea);
@@ -297,6 +330,58 @@
                 )}
               </div>
 
+              {/* ── Panel cambio de estado (no se imprime) ── */}
+              <div className="no-print" style={{ marginTop:'20px', borderTop:'2px solid #334155', paddingTop:'16px' }}>
+                <div style={{ fontSize:'9px', fontWeight:900, textTransform:'uppercase', letterSpacing:'2px', color:'#22d3ee', marginBottom:'12px' }}>
+                  ⚡ Actualizar Estado de la Idea
+                </div>
+
+                {/* Botones de estado */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'12px' }}>
+                  {STATUS_BTN.map(s => (
+                    <button key={s.key} onClick={() => setEditStatus(s.key)}
+                            style={{
+                              padding:'6px 14px', borderRadius:'999px', fontSize:'11px', fontWeight:700,
+                              border: editStatus === s.key ? '2px solid ' + s.border : '1px solid #334155',
+                              background: editStatus === s.key ? s.bg : 'transparent',
+                              color: editStatus === s.key ? s.fg : '#64748b',
+                              cursor:'pointer', transition:'all .2s',
+                              boxShadow: editStatus === s.key ? '0 0 12px ' + s.border + '88' : 'none'
+                            }}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Textarea feedback */}
+                <div style={{ marginBottom:'12px' }}>
+                  <div style={{ fontSize:'9px', fontWeight:700, textTransform:'uppercase', letterSpacing:'1px', color:'#64748b', marginBottom:'5px' }}>
+                    Retroalimentación del Comité DPO
+                  </div>
+                  <textarea value={editFeedback} onChange={e => setEditFeedback(e.target.value)}
+                            placeholder="Escribe aquí la retroalimentación para el colaborador…"
+                            rows={3}
+                            style={{ width:'100%', background:'#0f172a', border:'1px solid #334155', borderRadius:'8px',
+                                     color:'#f1f5f9', fontSize:'12px', padding:'8px 12px', resize:'vertical',
+                                     outline:'none', lineHeight:'1.5' }}/>
+                </div>
+
+                {/* Botón guardar */}
+                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                  <button onClick={handleUpdateStatus} disabled={saving || saved}
+                          style={{
+                            padding:'8px 22px', borderRadius:'10px', fontSize:'12px', fontWeight:900,
+                            border:'none', cursor: saving || saved ? 'not-allowed' : 'pointer',
+                            background: saved ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#22d3ee,#0891b2)',
+                            color:'#0f172a', transition:'all .2s',
+                            boxShadow: saved ? '0 0 18px rgba(16,185,129,.4)' : '0 0 18px rgba(34,211,238,.35)'
+                          }}>
+                    {saving ? '⏳ Guardando…' : saved ? '✅ ¡Estado actualizado!' : '💾 Guardar Cambios'}
+                  </button>
+                  {saveError && <span style={{ fontSize:'11px', color:'#f87171' }}>⚠ {saveError}</span>}
+                </div>
+              </div>
+
               {/* Firmas */}
               <div style={{ marginTop:'20px', borderTop:'1px solid #e2e8f0', paddingTop:'14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
                 {['Colaborador Creador', 'Comité DPO — Revisión'].map(lbl => (
@@ -337,13 +422,13 @@
     const AREAS_OPTS      = ['','Operativo','Administrativo','Staff'];
     const PILARES_OPTS    = ['','Productividad','Seguridad','Gente','Calidad','Mantenimiento'];
     const IMPACTO_OPTS    = ['','Alto — Impacto en toda la operación','Medio — Mejora de proceso específico','Bajo — Optimización puntual','Ahorro económico directo','Mejora en seguridad y bienestar','Reducción de reprocesos'];
-    const OPERADOR_OPTS   = ['','LIS','KA'];
+    const OPERADOR_OPTS   = ['','LIS','KA','AB-INBEV'];
     const CARGO_OPTS      = ['','Auxiliar Distribución','Responsable de Reparto','Conductor Distribución','Administrativo'];
     const PRESUPUESTO_OPTS= ['','No requiere presupuesto','Menos de $500.000','$500.000 - $2.000.000','$2.000.000 - $5.000.000','Más de $5.000.000'];
     const AREAS_EMOJIS    = { Operativo:'🏭', Administrativo:'🏢', Staff:'⭐' };
     const PILARES_EMOJIS  = { Productividad:'⚡', Seguridad:'🛡️', Gente:'👥', Calidad:'🎯', Mantenimiento:'🔧' };
     const IMPACTO_EMOJIS  = { 'Alto — Impacto en toda la operación':'🚀', 'Medio — Mejora de proceso específico':'📈', 'Bajo — Optimización puntual':'🔧', 'Ahorro económico directo':'💰', 'Mejora en seguridad y bienestar':'🛡️', 'Reducción de reprocesos':'♻️' };
-    const OPERADOR_EMOJIS = { LIS:'🔵', KA:'🟠' };
+    const OPERADOR_EMOJIS = { LIS:'🔵', KA:'🟠', 'AB-INBEV':'🟣' };
     const CARGO_EMOJIS    = { 'Auxiliar Distribución':'📦', 'Responsable de Reparto':'🗂️', 'Conductor Distribución':'🚛', 'Administrativo':'💼' };
     const PRESUPUESTO_EMOJIS = { 'No requiere presupuesto':'✅', 'Menos de $500.000':'💵', '$500.000 - $2.000.000':'💵💵', '$2.000.000 - $5.000.000':'💵💵💵', 'Más de $5.000.000':'🏦' };
     const INIT_FORM = { creador:'', operador:'', cargo:'', telefono:'', area:'', pilar:'', titulo:'', descripcion:'', impacto:'', presupuesto:'' };
@@ -650,7 +735,7 @@
 
       return (
         <>
-          {modal && <AuditModal idea={modal} onClose={()=>setModal(null)}/>}
+          {modal && <AuditModal idea={modal} onClose={()=>setModal(null)} onUpdate={()=>{ onRefresh(); }}/>}
 
           <div className="space-y-4 animate-fade-in">
             {/* KPI Cards */}
@@ -1032,7 +1117,7 @@
         const byStatus   = {'EN REVISION':0,'APROBADA':0,'IMPLEMENTADA':0,'RECHAZADA':0};
         const byPilar    = {};
         const byArea     = {};
-        const byOp       = {LIS:0, KA:0};
+        const byOp       = {LIS:0, KA:0, ABINBEV:0};
         const byBudget   = {Si:0, No:0};
         const byMes      = {};
         const byPerson   = {};
@@ -1047,8 +1132,8 @@
           const area = getArea(idea) || 'Sin área';
           byArea[area] = (byArea[area]||0) + 1;
 
-          const op = getOperador(idea).toUpperCase();
-          if (op === 'LIS') byOp.LIS++; else if (op === 'KA') byOp.KA++;
+          const op = getOperador(idea).toUpperCase().replace(/[\s-]/g,'');
+          if (op === 'LIS') byOp.LIS++; else if (op === 'KA') byOp.KA++; else if (op === 'ABINBEV' || op === 'AB-INBEV' || op === 'ABINBEV') byOp.ABINBEV++;
 
           const pres = getPresupuesto(idea);
           if (!pres || pres === 'No requiere presupuesto') byBudget.No++; else byBudget.Si++;
@@ -1097,7 +1182,7 @@
       const AREAS_COLORS   = ['linear-gradient(90deg,#22d3ee,#10b981)','linear-gradient(90deg,#818cf8,#22d3ee)','linear-gradient(90deg,#f59e0b,#f43f5e)'];
 
       const statusSegs   = [{l:'En Revisión',v:m.byStatus['EN REVISION'],c:'#f59e0b'},{l:'Aprobada',v:m.byStatus['APROBADA'],c:'#3b82f6'},{l:'Implementada',v:m.byStatus['IMPLEMENTADA'],c:'#10b981'},{l:'Rechazada',v:m.byStatus['RECHAZADA'],c:'#475569'}];
-      const opSegs       = [{l:'LIS',v:m.byOp.LIS,c:'#3b82f6'},{l:'KA',v:m.byOp.KA,c:'#f59e0b'}];
+      const opSegs       = [{l:'LIS',v:m.byOp.LIS,c:'#3b82f6'},{l:'KA',v:m.byOp.KA,c:'#f59e0b'},{l:'AB-InBev',v:m.byOp.ABINBEV,c:'#a855f7'}];
       const budgetSegs   = [{l:'Requiere',v:m.byBudget.Si,c:'#f59e0b'},{l:'No requiere',v:m.byBudget.No,c:'#10b981'}];
       const pilarBars    = Object.entries(m.byPilar).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:PILARES_COLORS[i%5]}));
       const areaBars     = Object.entries(m.byArea).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:AREAS_COLORS[i%3]}));
@@ -1193,19 +1278,20 @@
 
             {/* LIS vs KA */}
             <GCard accent="cyan">
-              <SL>🔵 Operador LIS vs 🟠 KA</SL>
+              <SL>🔵 LIS · 🟠 KA · 🟣 AB-InBev</SL>
               <div className="flex items-center justify-around">
-                <DonutChart segs={opSegs} size={110} hole={0.54} centerVal={m.byOp.LIS+m.byOp.KA} centerTxt="total"/>
-                <div className="flex flex-col gap-4">
-                  {opSegs.map(s => (
-                    <div key={s.l} className="text-center">
-                      <div className="text-2xl font-black" style={{color:s.c}}>{s.v}</div>
-                      <div className="text-xs text-slate-500">{s.l}</div>
-                      <div className="text-xs font-bold text-slate-400">
-                        {m.byOp.LIS+m.byOp.KA > 0 ? Math.round(s.v/(m.byOp.LIS+m.byOp.KA)*100) : 0}%
+                <DonutChart segs={opSegs} size={110} hole={0.54} centerVal={m.byOp.LIS+m.byOp.KA+m.byOp.ABINBEV} centerTxt="total"/>
+                <div className="flex flex-col gap-3">
+                  {opSegs.map(s => {
+                    const tot = m.byOp.LIS+m.byOp.KA+m.byOp.ABINBEV;
+                    return (
+                      <div key={s.l} className="text-center">
+                        <div className="text-xl font-black" style={{color:s.c}}>{s.v}</div>
+                        <div className="text-xs text-slate-500">{s.l}</div>
+                        <div className="text-xs font-bold text-slate-400">{tot>0?Math.round(s.v/tot*100):0}%</div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </GCard>
